@@ -9,4 +9,5 @@ add_executable(CGLab3 main.cpp
         geometry.h
         model.h
         model.cpp
+        geometry.cpp
 )
