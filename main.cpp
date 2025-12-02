@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
     if (2==argc) {
         model = new Model(argv[1]);
     } else {
-        model = new Model("obj/furry.obj");
+        model = new Model("../obj/base.obj");
     }
 
     zbuffer = new int[width*height];
@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
         }
 
         image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
-        image.write_tga_file("output.tga");
+        image.write_tga_file("../output.tga");
     }
 
     { // dump z-buffer (debugging purposes only)
