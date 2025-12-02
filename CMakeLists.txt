@@ -5,4 +5,8 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_executable(CGLab3 main.cpp
         tgaimage.h
-        tgaimage.cpp)
+        tgaimage.cpp
+        geometry.h
+        model.h
+        model.cpp
+)
