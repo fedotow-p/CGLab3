@@ -66,4 +66,65 @@ public:
     }
 };
 
+class TransparentCubeShader : public IShader {
+public:
+    Matrix uniform_M;
+    Vec3f cube_center;
+    float cube_size;
+    TGAColor cube_color;
+
+
+    Vec3f varying_pos[3];
+    float varying_depth[3];
+
+    TransparentCubeShader(Vec3f center = Vec3f(0,0,0), float size = 1.0f)
+        : cube_center(center), cube_size(size)
+    {
+        // Красный с 50% прозрачностью
+        cube_color = TGAColor(255, 0, 0, 128);
+    }
+
+    virtual Vec4f vertex(int iface, int nthvert) {
+        // 8 вершин куба
+        static Vec3f cube_verts[8] = {
+            Vec3f(-1, -1, -1), Vec3f(1, -1, -1),
+            Vec3f(-1,  1, -1), Vec3f(1,  1, -1),
+            Vec3f(-1, -1,  1), Vec3f(1, -1,  1),
+            Vec3f(-1,  1,  1), Vec3f(1,  1,  1)
+        };
+
+        // 12 граней куба (2 треугольника на каждую грань)
+        static int cube_faces[12][3] = {
+            {0,2,1}, {1,2,3},  // задняя грань
+            {4,5,6}, {5,7,6},  // передняя грань
+            {0,4,2}, {2,4,6},  // левая грань
+            {1,3,5}, {3,7,5},  // правая грань
+            {0,1,4}, {1,5,4},  // нижняя грань
+            {2,6,3}, {3,6,7}   // верхняя грань
+        };
+
+        // Получаем вершину для текущей грани
+        int vidx = cube_faces[iface][nthvert];
+        Vec3f vertex = cube_verts[vidx] * cube_size + cube_center;
+
+        varying_pos[nthvert] = vertex;
+        Vec4f gl_Vertex = uniform_M * Vec4f(vertex.x, vertex.y, vertex.z, 1.0f);
+        varying_depth[nthvert] = gl_Vertex.z;  // Сохраняем глубину
+
+        return gl_Vertex;
+    }
+
+    virtual bool fragment(Vec3f bar, TGAColor& color) {
+        float frag_depth = varying_depth[0] * bar.x +
+                          varying_depth[1] * bar.y +
+                          varying_depth[2] * bar.z;
+
+        // float depth_factor = std::max(0.0f, std::min(1.0f, (frag_depth + 1.0f) / 2.0f));
+        // unsigned char alpha = static_cast<unsigned char>(128 * (0.5f + 0.5f * depth_factor));
+
+        color = TGAColor(cube_color.r, cube_color.g, cube_color.b, cube_color.a);
+        return false;
+    }
+};
+
 #endif //__SHADER_H__

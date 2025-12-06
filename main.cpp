@@ -126,6 +126,14 @@ void triangle(Vec4f* pts, IShader& shader, TGAImage& image, float* zbuffer) {
                 zbuffer[idx] = z;
 
                 if (!shader.fragment(bc_screen, color)) {
+                    if (color.r > 200 && color.g < 50 && color.b < 50) {
+                        // Полупрозрачный красный
+                        TGAColor bg = image.get(P.x, P.y);
+                        unsigned char r = static_cast<unsigned char>(color.r * 0.5 + bg.r * 0.5);
+                        unsigned char g = static_cast<unsigned char>(color.g * 0.5 + bg.g * 0.5);
+                        unsigned char b = static_cast<unsigned char>(color.b * 0.5 + bg.b * 0.5);
+                        color = TGAColor(r, g, b, 255);
+                    }
                     image.set(P.x, P.y, color);
                 }
             }
@@ -140,6 +148,27 @@ void render(Model* model, IShader& shader, TGAImage& image, float* zbuffer) {
             screen_coords[j] = shader.vertex(i, j);
         }
         triangle(screen_coords, shader, image, zbuffer);
+    }
+}
+
+void renderSimpleTransparency(Model* model, IShader& model_shader,
+                             IShader& cube_shader, TGAImage& image, float* zbuffer) {
+    // Сначала рендерим непрозрачную модель
+    for (int i = 0; i < model->nfaces(); i++) {
+        Vec4f screen_coords[3];
+        for (int j = 0; j < 3; j++) {
+            screen_coords[j] = model_shader.vertex(i, j);
+        }
+        triangle(screen_coords, model_shader, image, zbuffer);
+    }
+
+    // Потом рендерим прозрачный куб (неправильный порядок, но работает)
+    for (int i = 0; i < 12; i++) {
+        Vec4f screen_coords[3];
+        for (int j = 0; j < 3; j++) {
+            screen_coords[j] = cube_shader.vertex(i, j);
+        }
+        triangle(screen_coords, cube_shader, image, zbuffer);
     }
 }
 
@@ -161,15 +190,30 @@ int main(int argc, char** argv) {
         zbuffer[i] = std::numeric_limits<float>::min();
     }
 
+    Vec3f min(1e9, 1e9, 1e9), max(-1e9, -1e9, -1e9);
+    for (int i = 0; i < model->nverts(); i++) {
+        Vec3f v = model->vert(i);
+        for (int j = 0; j < 3; j++) {
+            if (v[j] < min[j]) min[j] = v[j];
+            if (v[j] > max[j]) max[j] = v[j];
+        }
+    }
+
+    Vec3f center = (min + max) * 0.5f;
+    float size = std::max(std::max(max.x - min.x, max.y - min.y), max.z - min.z) * 0.6f;
+
     TGAImage image(width, height, TGAImage::RGB);
 
     PhongShader shader(model);
+    TransparentCubeShader cube_shader(center, size);
+    cube_shader.uniform_M = Viewport * Projection * ModelView;
+
     shader.uniform_M = Viewport * Projection * ModelView;
     shader.uniform_MIT = (Viewport * Projection * ModelView).invert_transpose();
     shader.uniform_light_dir = Vec3f(0, 0, -1).normalize();
     shader.uniform_eye_pos = camera.eye;
 
-    render(model, shader, image, zbuffer);
+    renderSimpleTransparency(model, shader, cube_shader, image, zbuffer);
 
     image.flip_vertically();
     image.write_tga_file("output.tga");
