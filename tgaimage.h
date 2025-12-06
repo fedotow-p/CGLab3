@@ -1,5 +1,5 @@
-#ifndef CGLAB3_TGAIMAGE_H
-#define CGLAB3_TGAIMAGE_H
+#ifndef __IMAGE_H__
+#define __IMAGE_H__
 
 #include <fstream>
 
@@ -93,5 +93,4 @@ public:
     void clear();
 };
 
-
-#endif //CGLAB3_TGAIMAGE_H
+#endif //__IMAGE_H__

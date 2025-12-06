@@ -1,39 +1,42 @@
 #include <vector>
 #include <cmath>
+#include <limits>
 #include "tgaimage.h"
 #include "model.h"
 #include "geometry.h"
 
-const TGAColor white = TGAColor(255, 255, 255, 255);
-const TGAColor red   = TGAColor(255, 0,   0,   255);
-const TGAColor green = TGAColor(0,   255, 0,   255);
-Model *model = NULL;
-int *zbuffer = NULL;
-Vec3f light_dir(0,0,-1);
 const int width  = 800;
 const int height = 800;
 const int depth  = 255;
 
-void line(Vec2i p0, Vec2i p1, TGAImage &image, TGAColor color) {
-    bool steep = false;
-    if (std::abs(p0.x-p1.x)<std::abs(p0.y-p1.y)) {
-        std::swap(p0.x, p0.y);
-        std::swap(p1.x, p1.y);
-        steep = true;
-    }
-    if (p0.x>p1.x) {
-        std::swap(p0, p1);
-    }
+Model *model = NULL;
+int *zbuffer = NULL;
+Vec3f light_dir(0,0,-1);
+Vec3f camera(0,0,3);
 
-    for (int x=p0.x; x<=p1.x; x++) {
-        float t = (x-p0.x)/(float)(p1.x-p0.x);
-        int y = p0.y*(1.-t) + p1.y*t;
-        if (steep) {
-            image.set(y, x, color);
-        } else {
-            image.set(x, y, color);
-        }
-    }
+Vec3f m2v(Matrix m) {
+    return Vec3f(m[0][0]/m[3][0], m[1][0]/m[3][0], m[2][0]/m[3][0]);
+}
+
+Matrix v2m(Vec3f v) {
+    Matrix m(4, 1);
+    m[0][0] = v.x;
+    m[1][0] = v.y;
+    m[2][0] = v.z;
+    m[3][0] = 1.f;
+    return m;
+}
+
+Matrix viewport(int x, int y, int w, int h) {
+    Matrix m = Matrix::identity(4);
+    m[0][3] = x+w/2.f;
+    m[1][3] = y+h/2.f;
+    m[2][3] = depth/2.f;
+
+    m[0][0] = w/2.f;
+    m[1][1] = h/2.f;
+    m[2][2] = depth/2.f;
+    return m;
 }
 
 void triangle(Vec3i t0, Vec3i t1, Vec3i t2, Vec2i uv0, Vec2i uv1, Vec2i uv2, TGAImage &image, float intensity, int *zbuffer) {
@@ -67,14 +70,11 @@ void triangle(Vec3i t0, Vec3i t1, Vec3i t2, Vec2i uv0, Vec2i uv1, Vec2i uv2, TGA
     }
 }
 
-
-
-
 int main(int argc, char** argv) {
     if (2==argc) {
         model = new Model(argv[1]);
     } else {
-        model = new Model("../obj/base.obj");
+        model = new Model("obj/african_head.obj");
     }
 
     zbuffer = new int[width*height];
@@ -83,6 +83,10 @@ int main(int argc, char** argv) {
     }
 
     { // draw the model
+        Matrix Projection = Matrix::identity(4);
+        Matrix ViewPort   = viewport(width/8, height/8, width*3/4, height*3/4);
+        Projection[3][2] = -1.f/camera.z;
+
         TGAImage image(width, height, TGAImage::RGB);
         for (int i=0; i<model->nfaces(); i++) {
             std::vector<int> face = model->face(i);
@@ -90,7 +94,7 @@ int main(int argc, char** argv) {
             Vec3f world_coords[3];
             for (int j=0; j<3; j++) {
                 Vec3f v = model->vert(face[j]);
-                screen_coords[j] = Vec3i((v.x+1.)*width/2., (v.y+1.)*height/2., (v.z+1.)*depth/2.);
+                screen_coords[j] =  m2v(ViewPort*Projection*v2m(v));
                 world_coords[j]  = v;
             }
             Vec3f n = (world_coords[2]-world_coords[0])^(world_coords[1]-world_coords[0]);
@@ -106,7 +110,7 @@ int main(int argc, char** argv) {
         }
 
         image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
-        image.write_tga_file("../output.tga");
+        image.write_tga_file("output.tga");
     }
 
     { // dump z-buffer (debugging purposes only)

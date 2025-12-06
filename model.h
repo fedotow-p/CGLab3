@@ -1,12 +1,5 @@
-//
-// Created by elmao on 02.12.2025.
-//
-
-#ifndef CGLAB3_MODEL_H
-#define CGLAB3_MODEL_H
-
-#include <vector>
-#include "geometry.h"
+#ifndef __MODEL_H__
+#define __MODEL_H__
 
 #include <vector>
 #include "geometry.h"
@@ -31,4 +24,4 @@ public:
     std::vector<int> face(int idx);
 };
 
-#endif //CGLAB3_MODEL_H
+#endif //__MODEL_H__
